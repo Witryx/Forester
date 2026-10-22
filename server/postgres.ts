@@ -5,12 +5,26 @@ import { resolve } from 'node:path';
 import { postgresStore, type ConnectionPool, type Store, audit } from './store';
 import { hashPassword } from './security';
 import { randomUUID } from 'node:crypto';
+import { DeploymentConfigError } from './deploy-errors';
 
 export function openPostgres(connectionString: string) {
   if (!/^postgres(ql)?:\/\//.test(connectionString))
-    throw new Error('DATABASE_URL musí být připojení k PostgreSQL.');
+    throw new DeploymentConfigError('DATABASE_URL musí být připojení k PostgreSQL.');
+  let url: URL;
+  try {
+    url = new URL(connectionString);
+  } catch {
+    throw new DeploymentConfigError('DATABASE_URL nemá platný formát připojovací URL.');
+  }
+  // These aliases currently mean verify-full in pg 8. Make that explicit without
+  // weakening certificate verification or changing explicitly requested libpq mode.
+  if (
+    ['prefer', 'require', 'verify-ca'].includes(url.searchParams.get('sslmode') ?? '') &&
+    url.searchParams.get('uselibpqcompat') !== 'true'
+  )
+    url.searchParams.set('sslmode', 'verify-full');
   const pool = new Pool({
-    connectionString,
+    connectionString: url.toString(),
     max: 3,
     idleTimeoutMillis: 5000,
     connectionTimeoutMillis: 15000,
@@ -54,7 +68,7 @@ export async function migratePostgres(pool: ConnectionPool) {
 
 export async function initPostgresDispatcher(db: Store, username: string, password: string) {
   if (!/^[a-z0-9._-]{3,40}$/.test(username) || password.length < 12 || password.length > 128)
-    throw new Error('Username: 3–40 znaků a-z/0-9/._-. Heslo: 12–128 znaků.');
+    throw new DeploymentConfigError('Username: 3–40 znaků a-z/0-9/._-. Heslo: 12–128 znaků.');
   const encoded = await hashPassword(password);
   return db.transaction(async () => {
     if (await db.prepare("SELECT id FROM users WHERE role='dispatcher' LIMIT 1").get())
