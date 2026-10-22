@@ -4,7 +4,7 @@ Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá �
 
 ## Automatické kontroly
 
-- `npm.cmd test`: 34 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty a bezpečné diagnostiky nasazení.
+- `npm.cmd test`: 35 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty a bezpečné diagnostiky nasazení.
 - `npm.cmd run check`: TypeScript prošel.
 - `npm.cmd run build`: TypeScript a produkční sestavení prošly.
 
@@ -12,7 +12,7 @@ Testy pokrývají hashování hesel, session cookie, odhlášení, omezení chyb
 
 Nové HTTP testy ověřují vytvoření propojeného profilu a účtu, přidělení evidenčního kódu, přihlášení nového řidiče, společný audit bez hesel a vrácení celé transakce při duplicitním username. Odmítají prázdná jména, současný výběr existujícího i nového profilu a vytvoření profilu řidičem.
 
-Čtyři integrační testy PostgreSQL nad PGlite ověřují opakovatelné migrace, prvního dispečera, neměnný audit, přihlášení, souběžné vytvoření zaměstnanců, rollback, role, změnu a reset hesla, deaktivaci a ochranu posledního dispečera. Session i limit chybných přihlášení fungují mezi dvěma instancemi API. HTTP testy procházejí také Vercel adaptérem s přepisem API cesty. Živé spojení s Neonem, TCP/TLS a skutečné směrování Vercelu zatím nejsou ověřené; vyžadují připojení účtů a nastavení produkčního prostředí podle [vercel.md](vercel.md).
+Pět integračních testů PostgreSQL nad PGlite ověřuje opakovatelné migrace, prvního dispečera, neměnný audit, přihlášení, souběžné vytvoření zaměstnanců, rollback, role, změnu a reset hesla, deaktivaci a ochranu posledního dispečera. Session i limit chybných přihlášení fungují mezi dvěma instancemi API. HTTP testy procházejí také Vercel adaptérem s přepisem API cesty. Živé připojení k Neonu bylo podle uživatelova Build Logu ověřeno; první migrace selhala kódem `42703` na pozici 8. Oprava tuto chybu reprodukuje na cizí `public.schema_migrations`, zavádí vlastní schéma `forester` a testuje zachování cizích účtů i konfigurace. Úspěšnou migraci a skutečné směrování Vercelu je ještě potřeba ověřit po nasazení opravy.
 
 Další dva testy ověřují, že diagnostika nasazení uvádí fázi a databázový kód bez výpisu připojovacích údajů, a že SSL aliasy současného ovladače zůstávají při normalizaci na `verify-full` ověřované.
 

@@ -6,6 +6,8 @@ Frontend a API běží v jednom existujícím Vercel projektu. API používá Po
 
 Ve svém existujícím Neon účtu založ samostatný projekt **Forester**. Použij region poblíž Vercel funkce. Připojení jiného projektu znovu nepoužívej: tato aplikace vytváří vlastní tabulky `users`, `employees`, `sessions` a další.
 
+V PostgreSQL Forester používá vlastní schéma **`forester`**, včetně `forester.schema_migrations`. Existující tabulky v `public` se nemažou, neupravují a nepoužívají pro přihlašování Foresteru. Migrační DDL má transakční `SET LOCAL search_path`; běžné dotazy odkazují přímo na `forester.*`, takže výběr schématu nezávisí na session stavu pooleru. Triggerové funkce mají vlastní pevný `search_path`. Schéma odděluje názvy objektů; samostatný Neon projekt nadále odděluje provoz a přístupové údaje aplikací.
+
 Ve Vercelu otevři existující projekt Forester → **Storage / Marketplace** → **Neon** a připoj databázi Foresteru. Alternativně nastav `DATABASE_URL` přímo v **Settings → Environment Variables**. Použij připojení s poolingem (hostname obsahuje `-pooler`) a zachovej parametry TLS dodané Neonem.
 
 Připojovací URL obsahuje heslo: patří jen do serverového prostředí, nikoliv do Git repozitáře nebo proměnné s prefixem `VITE_`.

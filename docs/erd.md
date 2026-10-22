@@ -4,6 +4,8 @@ ERD odpovídá aktuálnímu schématu SQLite: [001-foundation.sql](../server/mig
 
 Online PostgreSQL varianta pro Neon / Vercel je v [postgres-migrations/001-foundation.sql](../server/postgres-migrations/001-foundation.sql). Zachovává stejné entity a FK; SQLite `INTEGER` odpovídá PostgreSQL `BIGINT`. Navíc má technickou tabulku `login_attempts` bez FK, uvedenou níže. Online schéma tak obsahuje 28 tabulek.
 
+V PostgreSQL jsou všechny uvedené tabulky ve schématu `forester` (např. `forester.users` a `forester.schema_migrations`). Diagramy uvádějí samotné názvy tabulek; tabulky ostatních aplikací v `public` do tohoto modelu nepatří.
+
 V říjnové aplikaci jsou dostupné identity a správa účtů podle [říjnového zadání](rijnove-zadani.md). Ostatní provozní tabulky již existují v databázi jako základ dalšího vývoje, ale nemají dostupné provozní API ani obrazovky. Finanční entity `FinancialEntry` a `CostAllocation` jsou pouze budoucí návrh pro rozšířenou verzi R a nejsou součástí tohoto ERD.
 
 ## Jak diagram číst

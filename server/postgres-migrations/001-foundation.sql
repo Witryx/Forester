@@ -109,7 +109,7 @@ CREATE TABLE login_attempts (
 );
 CREATE INDEX login_attempts_expiry ON login_attempts(expires_at);
 
-CREATE FUNCTION forester_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION forester_audit_immutable() RETURNS trigger LANGUAGE plpgsql SET search_path = forester, pg_temp AS $$
 BEGIN RAISE EXCEPTION 'audit_immutable'; END;
 $$;
 CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_events
@@ -117,7 +117,7 @@ CREATE TRIGGER audit_no_update BEFORE UPDATE ON audit_events
 CREATE TRIGGER audit_no_delete BEFORE DELETE ON audit_events
  FOR EACH ROW EXECUTE FUNCTION forester_audit_immutable();
 
-CREATE FUNCTION forester_reservation_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION forester_reservation_insert() RETURNS trigger LANGUAGE plpgsql SET search_path = forester, pg_temp AS $$
 BEGIN
  -- Hash includes the resource type, so different resource kinds cannot collide by ID.
  PERFORM pg_advisory_xact_lock(hashtextextended(resource, 0))
@@ -137,13 +137,13 @@ END;
 $$;
 CREATE TRIGGER reservation_insert BEFORE INSERT ON reservations
  FOR EACH ROW EXECUTE FUNCTION forester_reservation_insert();
-CREATE FUNCTION forester_reservation_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION forester_reservation_immutable() RETURNS trigger LANGUAGE plpgsql SET search_path = forester, pg_temp AS $$
 BEGIN RAISE EXCEPTION 'reservation_immutable'; END;
 $$;
 CREATE TRIGGER reservation_immutable BEFORE UPDATE ON reservations
  FOR EACH ROW EXECUTE FUNCTION forester_reservation_immutable();
 
-CREATE FUNCTION forester_orders_reserved_fields() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE FUNCTION forester_orders_reserved_fields() RETURNS trigger LANGUAGE plpgsql SET search_path = forester, pg_temp AS $$
 BEGIN
  IF EXISTS (SELECT 1 FROM reservations WHERE order_id=OLD.id)
  AND (NEW.starts_at<>OLD.starts_at OR NEW.ends_at<>OLD.ends_at

@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import type { SQLInputValue } from 'node:sqlite';
 import type { Db } from './db';
+import { qualifyPostgresTables } from './postgres-schema';
 
 export type Row = Record<string, unknown>;
 type Result = { rows: Row[]; rowCount: number | null };
@@ -44,7 +45,10 @@ export function postgresParameters(sql: string) {
 export function postgresStore(pool: ConnectionPool): Store {
   const context = new AsyncLocalStorage<Connection>();
   const query = async (sql: string, values: unknown[]) => {
-    const result = await (context.getStore() ?? pool).query(postgresParameters(sql), values);
+    const result = await (context.getStore() ?? pool).query(
+      postgresParameters(qualifyPostgresTables(sql)),
+      values,
+    );
     // The pool parses PostgreSQL int8 as bigint; API timestamps and counters use JS numbers.
     return {
       ...result,

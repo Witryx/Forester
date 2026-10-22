@@ -8,10 +8,12 @@ import { postgresStore, postgresParameters, type ConnectionPool } from '../serve
 import { migratePostgres, initPostgresDispatcher } from '../server/postgres';
 import { createApp } from '../server/app';
 import { createVercelHandler, restoreApiUrl } from '../server/vercel-handler';
+import { qualifyPostgresTables } from '../server/postgres-schema';
 
 // A real PostgreSQL engine in WASM. One test connection is serialized because PGlite has one session.
-async function fixture() {
+async function fixture(beforeMigration?: string) {
   const pg = new PGlite();
+  if (beforeMigration) await pg.exec(beforeMigration);
   let tail = Promise.resolve();
   async function acquire() {
     const previous = tail;
@@ -117,6 +119,56 @@ test('PostgreSQL: migrace a první účet jsou opakovatelné, audit zůstává n
     );
     assert.equal(restoreApiUrl('/api?__foresterPath=auth%2Flogin&x=1'), '/api/auth/login?x=1');
     assert.equal(restoreApiUrl('/api/users?x=1'), '/api/users?x=1');
+  } finally {
+    await db.close();
+  }
+});
+
+test('PostgreSQL: cizí users a schema_migrations nezablokují Forester a zůstanou nezměněné', async () => {
+  const { db, pool } = await fixture(`
+    CREATE TABLE public.schema_migrations (version TEXT PRIMARY KEY);
+    INSERT INTO public.schema_migrations VALUES ('other-app-001');
+    CREATE TABLE public.users (id TEXT PRIMARY KEY, email TEXT NOT NULL);
+    INSERT INTO public.users VALUES ('original-user','original@example.test');
+    CREATE TABLE public.settings (key TEXT PRIMARY KEY, value_json TEXT NOT NULL);
+    INSERT INTO public.settings VALUES ('demo','true');
+  `);
+  try {
+    const client = await pool.connect();
+    try {
+      await assert.rejects(
+        () =>
+          client.query('SELECT name FROM public.schema_migrations WHERE name=$1', [
+            '001-foundation.sql',
+          ]),
+        (error: unknown) =>
+          (error as { code: string; position: string }).code === '42703' &&
+          (error as { position: string }).position === '8',
+      );
+    } finally {
+      client.release();
+    }
+    await migratePostgres(pool);
+    assert.equal(await initPostgresDispatcher(db, 'dispecer', 'ProductionTest!2026'), true);
+    assert.equal((await db.prepare('SELECT username FROM users').get())!.username, 'dispecer');
+    assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get())!.n, 1);
+    assert.deepEqual(await db.prepare('SELECT * FROM public.schema_migrations').all(), [
+      { version: 'other-app-001' },
+    ]);
+    assert.deepEqual(await db.prepare('SELECT * FROM public.users').all(), [
+      { id: 'original-user', email: 'original@example.test' },
+    ]);
+    await createApp(db, { production: true, origin: 'https://forester.example' });
+    assert.equal(
+      (await db.prepare("SELECT value_json FROM public.settings WHERE key='demo'").get())!
+        .value_json,
+      'true',
+    );
+    assert.equal(
+      qualifyPostgresTables("SELECT 'FROM users' FROM users -- JOIN users\n"),
+      "SELECT 'FROM users' FROM forester.users -- JOIN users\n",
+    );
+    assert.equal(qualifyPostgresTables('SELECT * FROM public.users'), 'SELECT * FROM public.users');
   } finally {
     await db.close();
   }

@@ -43,19 +43,26 @@ export async function migratePostgres(pool: ConnectionPool) {
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(614327802)');
+    await client.query('CREATE SCHEMA IF NOT EXISTS forester');
+    // DDL is scoped to this transaction, including when the URL uses PgBouncer.
+    await client.query('SET LOCAL search_path TO forester');
     await client.query(
-      'CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at BIGINT NOT NULL)',
+      'CREATE TABLE IF NOT EXISTS forester.schema_migrations (name TEXT PRIMARY KEY, applied_at BIGINT NOT NULL)',
     );
     const folder = fileURLToPath(new URL('./postgres-migrations/', import.meta.url));
     for (const name of readdirSync(folder)
       .filter((n) => n.endsWith('.sql'))
       .sort()) {
-      const applied = await client.query('SELECT name FROM schema_migrations WHERE name=$1', [
-        name,
-      ]);
+      const applied = await client.query(
+        'SELECT name FROM forester.schema_migrations WHERE name=$1',
+        [name],
+      );
       if (applied.rows.length) continue;
       await client.query(readFileSync(resolve(folder, name), 'utf8'));
-      await client.query('INSERT INTO schema_migrations VALUES ($1,$2)', [name, Date.now()]);
+      await client.query('INSERT INTO forester.schema_migrations VALUES ($1,$2)', [
+        name,
+        Date.now(),
+      ]);
     }
     await client.query('COMMIT');
   } catch (error) {
