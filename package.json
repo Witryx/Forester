@@ -4,11 +4,13 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24.11.0"
+    "node": "^24.11.0"
   },
   "scripts": {
     "dev": "concurrently -k -n api,web \"node --env-file-if-exists=.env --import tsx --watch server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && vite build",
+    "vercel:build": "npm run db:deploy && npm run build",
+    "db:deploy": "node --env-file-if-exists=.env --import tsx server/deploy-db.ts",
     "start": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "db:migrate": "node --env-file-if-exists=.env --import tsx server/cli.ts migrate",
     "db:seed": "node --env-file-if-exists=.env --import tsx server/cli.ts seed",
@@ -19,16 +21,20 @@
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
+    "@vercel/functions": "^3.10.3",
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "lucide-react": "^0.468.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",

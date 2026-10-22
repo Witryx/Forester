@@ -1,6 +1,6 @@
 # Forester
 
-Interní web pro přepravu dřeva a lesní těžbu. Říjnový rozsah podle seznamu uživatele: databázový návrh, přihlášení a odhlášení, role Dispečer / Řidič, deaktivace, základ správy účtů a UI/UX. Dispečer má úvod a správu účtů; řidič pouze úvod s údaji účtu a odhlášení. React + TypeScript, Express, SQLite; Node **24.11+**.
+Interní web pro přepravu dřeva a lesní těžbu. Říjnový rozsah podle seznamu uživatele: databázový návrh, přihlášení a odhlášení, role Dispečer / Řidič, deaktivace, základ správy účtů a UI/UX. Dispečer má úvod a správu účtů; řidič pouze úvod s údaji účtu a odhlášení. React + TypeScript, Express, lokální SQLite nebo PostgreSQL (Neon / Vercel); Node **24.11+ v řadě 24.x**.
 
 ## Spuštění
 
@@ -37,7 +37,11 @@ Volitelně zkopírujte `.env.example` do `.env`. Skripty API a DB načítají `.
 
 Pro vlastní prázdnou databázi nastavte `DATABASE_PATH`, `INIT_USERNAME` a silné `INIT_PASSWORD` (12–128 znaků) v prostředí nebo `.env`, spusťte `npm.cmd run db:init`, poté inicializační heslo z konfigurace odstraňte. CLI vytvoří pouze prvního dispečera. Další účty zakládá dispečer v UI. Veřejná registrace neexistuje.
 
-`NODE_ENV=production` vyžaduje HTTPS `APP_ORIGIN` a odmítne databázi s demo daty. Potřebujete HTTPS reverse proxy, trvalý disk pro SQLite a vlastní zálohování. Port a bind adresu nastavují `PORT` a `HOST`, výchozí je pouze loopback. Vývojová proxy ve `vite.config.ts` míří na port 3001; při změně API portu ji také upravte.
+`NODE_ENV=production` vyžaduje HTTPS origin a odmítne databázi s demo daty. Pro vlastní server se SQLite potřebujete HTTPS reverse proxy, trvalý disk a zálohování. Port a bind adresu nastavují `PORT` a `HOST`, výchozí je pouze loopback. Vývojová proxy ve `vite.config.ts` míří na port 3001; při změně API portu ji také upravte.
+
+## Vercel a Neon
+
+Do existujícího Vercel projektu připojte samostatnou Neon databázi Foresteru. Nastavte `DATABASE_URL`, `APP_ORIGIN` a pro první deploy také `INIT_USERNAME` a `INIT_PASSWORD`. Konfigurace `vercel.json` používá `npm run vercel:build`, který aplikuje PostgreSQL migrace, případně vytvoří prvního dispečera a sestaví frontend. Lokální SQLite se automaticky nekopíruje a demo přihlašovací údaje v nové databázi neexistují. Podrobný postup je v [docs/vercel.md](docs/vercel.md).
 
 ## Obnova demo prostředí bez mazání stávajících dat
 

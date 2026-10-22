@@ -31,7 +31,7 @@ async function fixture() {
 }
 async function httpFixture() {
   const db = await fixture();
-  const app = createApp(db, { origin: 'http://localhost:5173' });
+  const app = await createApp(db, { origin: 'http://localhost:5173' });
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

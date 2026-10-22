@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import { audit, transaction, type Db } from './db';
+import type { Db } from './db';
+import { audit, transaction, asStore, type Store } from './store';
 import { hashPassword, verifyPassword, randomToken, tokenHash } from './security';
-import { DomainError } from './planning';
+import { DomainError } from './errors';
 import type { User } from '../shared/types';
 z.config(z.locales.cs());
 declare global {
@@ -53,10 +54,26 @@ const accountInput = z
     message: 'Nový profil zaměstnance lze vytvořit pro řidičský účet.',
     path: ['newEmployee'],
   });
-export function createApp(db: Db, options: { origin?: string; production?: boolean } = {}) {
+export async function createApp(
+  database: Db | Store,
+  options: {
+    origin?: string;
+    production?: boolean;
+  } = {},
+) {
+  const db = asStore(database);
   const app = express();
   const production = options.production ?? process.env.NODE_ENV === 'production';
-  const origin = options.origin || process.env.APP_ORIGIN || 'http://localhost:5173';
+  const vercelHost =
+    process.env.VERCEL === '1'
+      ? process.env.VERCEL_ENV === 'production'
+        ? process.env.VERCEL_PROJECT_PRODUCTION_URL
+        : process.env.VERCEL_URL
+      : undefined;
+  const origin =
+    options.origin ||
+    process.env.APP_ORIGIN ||
+    (vercelHost ? `https://${vercelHost}` : 'http://localhost:5173');
   const allowedOrigins = new Set([
     origin,
     ...(!production
@@ -71,14 +88,20 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
   if (
     production &&
     (!origin.startsWith('https://') ||
-      db.prepare("SELECT key FROM settings WHERE key='demo'").get())
+      (await db.prepare("SELECT key FROM settings WHERE key='demo'").get()))
   )
     throw new Error('Produkce vyžaduje HTTPS APP_ORIGIN a databázi bez demo dat.');
   const hours = Number(process.env.SESSION_HOURS || 12);
   if (!Number.isFinite(hours) || hours <= 0 || hours > 168)
     throw new Error('SESSION_HOURS musí být 0–168 hodin.');
   const dummyPassword = hashPassword(randomToken());
-  const attempts = new Map<string, { count: number; until: number }>();
+  const attempts = new Map<
+    string,
+    {
+      count: number;
+      until: number;
+    }
+  >();
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
   app.use(express.json({ limit: '16kb' }));
@@ -104,21 +127,36 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
       path: '/',
       maxAge,
     });
-  app.get('/api/health', (_req, res) => {
-    db.prepare('SELECT 1').get();
+  app.get('/api/health', async (_req, res) => {
+    await db.prepare('SELECT 1').get();
     res.json({ status: 'ok' });
   });
   app.post('/api/auth/login', async (req, res) => {
     const input = loginInput.parse(req.body);
-    const ip = req.ip || 'unknown';
+    const ip =
+      (process.env.VERCEL === '1' ? req.get('x-forwarded-for') : undefined) || req.ip || 'unknown';
     const now = Date.now();
-    for (const [key, item] of attempts) if (item.until <= now) attempts.delete(key);
-    const bucket = attempts.get(ip) || { count: 0, until: now + 15 * 60_000 };
-    if (bucket.count >= 10)
-      throw new DomainError(429, 'Příliš mnoho pokusů. Zkuste to za 15 minut.');
-    bucket.count++;
-    attempts.set(ip, bucket);
-    const row = db
+    const ipHash = tokenHash(ip);
+    if (db.dialect === 'postgres') {
+      await db.prepare('DELETE FROM login_attempts WHERE expires_at<=?').run(now);
+      const bucket = await db
+        .prepare(
+          `INSERT INTO login_attempts (ip_hash,attempts,expires_at) VALUES (?,1,?)
+         ON CONFLICT (ip_hash) DO UPDATE SET attempts=login_attempts.attempts+1
+         RETURNING attempts`,
+        )
+        .get(ipHash, now + 15 * 60000);
+      if (Number(bucket?.attempts) > 10)
+        throw new DomainError(429, 'Příliš mnoho pokusů. Zkuste to za 15 minut.');
+    } else {
+      for (const [key, item] of attempts) if (item.until <= now) attempts.delete(key);
+      const bucket = attempts.get(ip) || { count: 0, until: now + 15 * 60000 };
+      if (bucket.count >= 10)
+        throw new DomainError(429, 'Příliš mnoho pokusů. Zkuste to za 15 minut.');
+      bucket.count++;
+      attempts.set(ip, bucket);
+    }
+    const row = await db
       .prepare(`SELECT ${userColumns},password_hash,session_version FROM users WHERE username=?`)
       .get(input.username);
     const valid = await verifyPassword(
@@ -128,7 +166,7 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     if (!valid || !row?.active)
       throw new DomainError(401, 'Uživatelské jméno nebo heslo není správné.');
     // Re-read after asynchronous hashing: an intervening deactivation/reset must win.
-    const current = db
+    const current = await db
       .prepare(`SELECT ${userColumns},password_hash,session_version FROM users WHERE id=?`)
       .get(row.id);
     if (
@@ -138,10 +176,12 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     )
       throw new DomainError(401, 'Uživatelské jméno nebo heslo není správné.');
     attempts.delete(ip);
+    if (db.dialect === 'postgres')
+      await db.prepare('DELETE FROM login_attempts WHERE ip_hash=?').run(ipHash);
     const token = randomToken();
     const csrf = randomToken();
-    transaction(db, () => {
-      const latest = db
+    await transaction(db, async () => {
+      const latest = await db
         .prepare('SELECT active,session_version,password_hash FROM users WHERE id=?')
         .get(current.id);
       if (
@@ -150,16 +190,18 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
         latest.session_version !== current.session_version
       )
         throw new DomainError(401, 'Uživatelské jméno nebo heslo není správné.');
-      db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(now);
-      db.prepare('INSERT INTO sessions VALUES (?,?,?,?,?,?)').run(
-        tokenHash(token),
-        current.id,
-        csrf,
-        current.session_version,
-        now + hours * 3600_000,
-        now,
-      );
-      audit(
+      await db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(now);
+      await db
+        .prepare('INSERT INTO sessions VALUES (?,?,?,?,?,?)')
+        .run(
+          tokenHash(token),
+          current.id,
+          csrf,
+          current.session_version,
+          now + hours * 3600000,
+          now,
+        );
+      await audit(
         db,
         { id: current.id as string, username: current.username as string },
         'auth.login',
@@ -170,10 +212,10 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
         req.correlationId,
       );
     });
-    setCookie(res, token, hours * 3600_000);
+    setCookie(res, token, hours * 3600000);
     res.json({ ok: true });
   });
-  app.use('/api', (req, _res, next) => {
+  app.use('/api', async (req, _res, next) => {
     const cookie = req.headers.cookie
       ?.split(';')
       .map((v) => v.trim())
@@ -182,7 +224,7 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     if (!cookie || !/^[a-f0-9]{64}$/.test(cookie))
       return next(new DomainError(401, 'Přihlaste se prosím znovu.'));
     req.tokenHash = tokenHash(cookie);
-    const session = db
+    const session = await db
       .prepare(
         `SELECT u.*,s.csrf_token FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1 AND u.session_version=s.session_version`,
       )
@@ -208,8 +250,8 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     req.user.role === 'dispatcher'
       ? next()
       : next(new DomainError(403, 'Tato část je dostupná pouze dispečerovi.'));
-  const reauthorize = (req: Request, admin = false) => {
-    const session = db
+  const reauthorize = async (req: Request, admin = false) => {
+    const session = await db
       .prepare(
         'SELECT u.id,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1 AND u.session_version=s.session_version',
       )
@@ -218,10 +260,10 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     if (admin && session.role !== 'dispatcher')
       throw new DomainError(403, 'Tato část je dostupná pouze dispečerovi.');
   };
-  app.post('/api/auth/logout', (req, res) => {
-    transaction(db, () => {
-      db.prepare('DELETE FROM sessions WHERE token_hash=?').run(req.tokenHash);
-      audit(db, req.user, 'auth.logout', 'user', req.user.id, null, null, req.correlationId);
+  app.post('/api/auth/logout', async (req, res) => {
+    await transaction(db, async () => {
+      await db.prepare('DELETE FROM sessions WHERE token_hash=?').run(req.tokenHash);
+      await audit(db, req.user, 'auth.logout', 'user', req.user.id, null, null, req.correlationId);
     });
     setCookie(res, '', 0);
     res.json({ ok: true });
@@ -235,21 +277,23 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
       .parse(req.body);
     if (input.currentPassword === input.newPassword)
       throw new DomainError(422, 'Nové heslo musí být jiné než současné.');
-    const row = db.prepare('SELECT password_hash,version FROM users WHERE id=?').get(req.user.id)!;
+    const row = (await db
+      .prepare('SELECT password_hash,version FROM users WHERE id=?')
+      .get(req.user.id))!;
     if (!(await verifyPassword(input.currentPassword, row.password_hash as string)))
       throw new DomainError(422, 'Současné heslo není správné.');
     const encoded = await hashPassword(input.newPassword);
-    transaction(db, () => {
-      reauthorize(req);
-      const result = db
+    await transaction(db, async () => {
+      await reauthorize(req);
+      const result = await db
         .prepare(
           'UPDATE users SET password_hash=?,must_change_password=0,session_version=session_version+1,version=version+1 WHERE id=? AND password_hash=? AND active=1',
         )
         .run(encoded, req.user.id, row.password_hash);
       if (!result.changes)
         throw new DomainError(409, 'Účet se mezitím změnil. Přihlaste se znovu.');
-      db.prepare('DELETE FROM sessions WHERE user_id=?').run(req.user.id);
-      audit(
+      await db.prepare('DELETE FROM sessions WHERE user_id=?').run(req.user.id);
+      await audit(
         db,
         req.user,
         'user.password_changed',
@@ -263,10 +307,10 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     setCookie(res, '', 0);
     res.json({ ok: true });
   });
-  app.get('/api/bootstrap', (req, res) => {
+  app.get('/api/bootstrap', async (req, res) => {
     const employees =
       req.user.role === 'dispatcher' && !req.user.must_change_password
-        ? db
+        ? await db
             .prepare(
               'SELECT id,code,first_name,last_name,active FROM employees WHERE archived_at IS NULL ORDER BY last_name',
             )
@@ -275,38 +319,35 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     res.json({
       user: req.user,
       csrfToken: req.csrfToken,
-      demo: !!db.prepare("SELECT key FROM settings WHERE key='demo'").get(),
+      demo: !!(await db.prepare("SELECT key FROM settings WHERE key='demo'").get()),
       employees,
       fetchedAt: Date.now(),
     });
   });
-  app.get('/api/users', dispatcher, (_req, res) =>
-    res.json(db.prepare(`SELECT ${userColumns} FROM users ORDER BY role,username`).all()),
+  app.get('/api/users', dispatcher, async (_req, res) =>
+    res.json(await db.prepare(`SELECT ${userColumns} FROM users ORDER BY role,username`).all()),
   );
   app.post('/api/users', dispatcher, async (req, res) => {
     const input = accountInput.parse(req.body);
     const encoded = await hashPassword(input.password);
     const id = randomUUID();
-    transaction(db, () => {
-      reauthorize(req, true);
+    await transaction(db, async () => {
+      await reauthorize(req, true);
       let employeeId = input.role === 'driver' ? input.employeeId : null;
       if (input.newEmployee) {
         employeeId = randomUUID();
-        const highestCode = db
-          .prepare('SELECT code FROM employees')
-          .all()
-          .reduce((max, row) => {
+        const highestCode = (await db.prepare('SELECT code FROM employees').all()).reduce(
+          (max, row) => {
             const match = /^ZAM-(\d+)$/.exec(row.code as string);
             return match ? Math.max(max, Number(match[1])) : max;
-          }, 0);
-        const code = `ZAM-${String(highestCode + 1).padStart(3, '0')}`;
-        db.prepare('INSERT INTO employees (id,code,first_name,last_name) VALUES (?,?,?,?)').run(
-          employeeId,
-          code,
-          input.newEmployee.firstName,
-          input.newEmployee.lastName,
+          },
+          0,
         );
-        audit(
+        const code = `ZAM-${String(highestCode + 1).padStart(3, '0')}`;
+        await db
+          .prepare('INSERT INTO employees (id,code,first_name,last_name) VALUES (?,?,?,?)')
+          .run(employeeId, code, input.newEmployee.firstName, input.newEmployee.lastName);
+        await audit(
           db,
           req.user,
           'employee.created',
@@ -319,15 +360,17 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
       }
       if (
         input.role === 'driver' &&
-        !db
+        !(await db
           .prepare('SELECT id FROM employees WHERE id=? AND active=1 AND archived_at IS NULL')
-          .get(employeeId)
+          .get(employeeId))
       )
         throw new DomainError(422, 'Vyberte aktivního zaměstnance.');
-      db.prepare(
-        'INSERT INTO users (id,username,password_hash,role,display_name,employee_id,must_change_password) VALUES (?,?,?,?,?,?,1)',
-      ).run(id, input.username, encoded, input.role, input.displayName, employeeId);
-      audit(
+      await db
+        .prepare(
+          'INSERT INTO users (id,username,password_hash,role,display_name,employee_id,must_change_password) VALUES (?,?,?,?,?,?,1)',
+        )
+        .run(id, input.username, encoded, input.role, input.displayName, employeeId);
+      await audit(
         db,
         req.user,
         'user.created',
@@ -345,7 +388,7 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     });
     res.status(201).json({ id });
   });
-  app.patch('/api/users/:id', dispatcher, (req, res) => {
+  app.patch('/api/users/:id', dispatcher, async (req, res) => {
     const input = z
       .object({
         username: usernameInput,
@@ -356,9 +399,9 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
         version: z.number().int().positive(),
       })
       .parse(req.body);
-    transaction(db, () => {
-      reauthorize(req, true);
-      const old = db
+    await transaction(db, async () => {
+      await reauthorize(req, true);
+      const old = await db
         .prepare(`SELECT ${userColumns} FROM users WHERE id=?`)
         .get(req.params.id as string);
       if (!old) throw new DomainError(404, 'Účet nebyl nalezen.');
@@ -369,31 +412,34 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
         old.active &&
         (!input.active || input.role !== 'dispatcher') &&
         Number(
-          db.prepare("SELECT COUNT(*) AS n FROM users WHERE role='dispatcher' AND active=1").get()!
-            .n,
+          (await db
+            .prepare("SELECT COUNT(*) AS n FROM users WHERE role='dispatcher' AND active=1")
+            .get())!.n,
         ) <= 1
       )
         throw new DomainError(422, 'Poslední aktivní dispečer musí zůstat zachovaný.');
       if (
         input.role === 'driver' &&
         (!input.employeeId ||
-          !db
+          !(await db
             .prepare('SELECT id FROM employees WHERE id=? AND active=1 AND archived_at IS NULL')
-            .get(input.employeeId))
+            .get(input.employeeId)))
       )
         throw new DomainError(422, 'Řidič musí být propojen s aktivním zaměstnancem.');
-      db.prepare(
-        'UPDATE users SET username=?,display_name=?,active=?,role=?,employee_id=?,version=version+1,session_version=session_version+1 WHERE id=?',
-      ).run(
-        input.username,
-        input.displayName,
-        +input.active,
-        input.role,
-        input.role === 'driver' ? input.employeeId : null,
-        old.id,
-      );
-      db.prepare('DELETE FROM sessions WHERE user_id=?').run(old.id);
-      audit(
+      await db
+        .prepare(
+          'UPDATE users SET username=?,display_name=?,active=?,role=?,employee_id=?,version=version+1,session_version=session_version+1 WHERE id=?',
+        )
+        .run(
+          input.username,
+          input.displayName,
+          +input.active,
+          input.role,
+          input.role === 'driver' ? input.employeeId : null,
+          old.id,
+        );
+      await db.prepare('DELETE FROM sessions WHERE user_id=?').run(old.id);
+      await audit(
         db,
         req.user,
         'user.updated',
@@ -418,19 +464,19 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
       .object({ password: passwordInput, version: z.number().int().positive() })
       .parse(req.body);
     const encoded = await hashPassword(input.password);
-    transaction(db, () => {
-      reauthorize(req, true);
-      if (!db.prepare('SELECT id FROM users WHERE id=?').get(req.params.id as string))
+    await transaction(db, async () => {
+      await reauthorize(req, true);
+      if (!(await db.prepare('SELECT id FROM users WHERE id=?').get(req.params.id as string)))
         throw new DomainError(404, 'Účet nebyl nalezen.');
-      const result = db
+      const result = await db
         .prepare(
           'UPDATE users SET password_hash=?,must_change_password=1,session_version=session_version+1,version=version+1 WHERE id=? AND version=?',
         )
         .run(encoded, req.params.id as string, input.version);
       if (!result.changes)
         throw new DomainError(409, 'Účet se mezitím změnil. Načtěte aktuální stav.');
-      db.prepare('DELETE FROM sessions WHERE user_id=?').run(req.params.id as string);
-      audit(
+      await db.prepare('DELETE FROM sessions WHERE user_id=?').run(req.params.id as string);
+      await audit(
         db,
         req.user,
         'user.password_reset',
@@ -463,11 +509,18 @@ export function createApp(db: Db, options: { origin?: string; production?: boole
     if (error instanceof DomainError)
       return res.status(error.status).json({ message: error.message });
     const message = error instanceof Error ? error.message : '';
-    if (message.includes('UNIQUE constraint'))
+    if (message.includes('UNIQUE constraint') || (error as { code?: string })?.code === '23505')
       return res.status(409).json({ message: 'Uživatelské jméno nebo profil už je použitý.' });
     if (message.includes('reservation_conflict'))
       return res.status(409).json({ message: 'Souprava je v tomto čase již rezervovaná.' });
-    if (message.includes('JSON') || (error as { status?: number })?.status === 400)
+    if (
+      message.includes('JSON') ||
+      (
+        error as {
+          status?: number;
+        }
+      )?.status === 400
+    )
       return res.status(400).json({ message: 'Požadavek nemá platný formát.' });
     console.error(`Request ${req.correlationId}: internal error`);
     res.status(500).json({

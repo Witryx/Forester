@@ -1,14 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { audit, transaction, type Db } from './db';
-export class DomainError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+import { DomainError } from './errors';
+export { DomainError } from './errors';
 export const overlaps = (a: { start: number; end: number }, b: { start: number; end: number }) =>
   a.start < b.end && b.start < a.end;
 const instant = z.iso

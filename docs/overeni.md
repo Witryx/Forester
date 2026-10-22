@@ -4,13 +4,15 @@ Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá �
 
 ## Automatické kontroly
 
-- `npm.cmd test`: 28 testů prošlo včetně vytvoření nového zaměstnance s účtem.
+- `npm.cmd test`: 32 testů prošlo včetně vytvoření nového zaměstnance s účtem a PostgreSQL varianty.
 - `npm.cmd run check`: TypeScript prošel.
 - `npm.cmd run build`: TypeScript a produkční sestavení prošly.
 
 Testy pokrývají hashování hesel, session cookie, odhlášení, omezení chybných pokusů, CSRF, vytvoření a editaci účtu, role, deaktivaci, reset hesla a ochranu posledního dispečera. Ověřují také zneplatnění session při změně účtu, odmítnutí duplicity bez změny dat a zastaralý zápis.
 
 Nové HTTP testy ověřují vytvoření propojeného profilu a účtu, přidělení evidenčního kódu, přihlášení nového řidiče, společný audit bez hesel a vrácení celé transakce při duplicitním username. Odmítají prázdná jména, současný výběr existujícího i nového profilu a vytvoření profilu řidičem.
+
+Čtyři integrační testy PostgreSQL nad PGlite ověřují opakovatelné migrace, prvního dispečera, neměnný audit, přihlášení, souběžné vytvoření zaměstnanců, rollback, role, změnu a reset hesla, deaktivaci a ochranu posledního dispečera. Session i limit chybných přihlášení fungují mezi dvěma instancemi API. HTTP testy procházejí také Vercel adaptérem s přepisem API cesty. Živé spojení s Neonem, TCP/TLS a skutečné směrování Vercelu zatím nejsou ověřené; vyžadují připojení účtů a nastavení produkčního prostředí podle [vercel.md](vercel.md).
 
 Samostatné HTTP testy ověřují, že řidič nedostane seznam zaměstnanců ani provozní data, nemůže spravovat účty a provozní API není dostupné ani dispečerovi. Bootstrap neobsahuje práce, techniku ani statistiky.
 
