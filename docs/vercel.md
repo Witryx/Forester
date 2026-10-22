@@ -23,7 +23,7 @@ Pro **Production** nastav:
 | `INIT_USERNAME` | Přihlašovací jméno prvního dispečera, např. `dispecer`.                                  |
 | `INIT_PASSWORD` | Vlastní nové heslo o 12–128 znacích.                                                     |
 
-Pokud `APP_ORIGIN` není nastavený, API na Vercelu použije `VERCEL_PROJECT_PRODUCTION_URL` pro produkci, respektive `VERCEL_URL` pro preview. Vlastní doménu nastav explicitně přes `APP_ORIGIN`.
+Pokud `APP_ORIGIN` není nastavený, API na Vercelu použije `VERCEL_PROJECT_PRODUCTION_URL` pro produkci, respektive `VERCEL_URL` pro preview. Vlastní doménu nastav explicitně přes `APP_ORIGIN`. Server normalizuje zadanou adresu na origin (odstraní cestu a koncové lomítko). Vždy také povoluje přesné adresy vlastního nasazení z metadat Vercelu; v produkci produkční doménu i adresu aktuálního deploye, v preview pouze adresu daného deploye. Nepoužívá wildcard `*.vercel.app` ani doménu získanou z hlavičky požadavku.
 
 Pro **Preview** používej samostatnou Neon větev/databázi a odpovídající proměnné. Build aplikuje migrace do databáze svého prostředí, proto preview nesměruj do produkční databáze. Každé prostředí přijímá pouze svůj nastavený Origin.
 

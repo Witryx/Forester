@@ -4,7 +4,7 @@ Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá �
 
 ## Automatické kontroly
 
-- `npm.cmd test`: 37 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty, bezpečné diagnostiky nasazení a textové chyby API.
+- `npm.cmd test`: 39 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty, bezpečné diagnostiky nasazení, textové chyby API a domén Vercelu.
 - `npm.cmd run check`: TypeScript prošel.
 - `npm.cmd run build`: TypeScript a produkční sestavení prošly.
 - `npm.cmd run check:runtime`: serverové API se přeloží v režimu NodeNext a načte přímo v nativním Node.js bez `tsx` nebo Vite. Tento krok je součástí buildu.
@@ -17,7 +17,9 @@ Pět integračních testů PostgreSQL nad PGlite ověřuje opakovatelné migrace
 
 Další dva testy ověřují, že diagnostika nasazení uvádí fázi a databázový kód bez výpisu připojovacích údajů, a že SSL aliasy současného ovladače zůstávají při normalizaci na `verify-full` ověřované.
 
-Na veřejné adrese `/api/health` a `/api/bootstrap` byly po prvním úspěšném buildu ověřeny textové HTTP 500 `FUNCTION_INVOCATION_FAILED`. Lokální import sestaveného ESM API reprodukoval `ERR_MODULE_NOT_FOUND` kvůli relativním importům bez přípony. Oprava doplňuje `.js` přípony a zavádí kontrolu nativního spuštění. Dva klientské testy ověřují, že textová chyba serveru zobrazí českou zprávu a správné JSON odpovědi zachovají data i chybové zprávy. Veřejné API je po nasazení této opravy potřeba znovu ověřit.
+Na veřejné adrese `/api/health` a `/api/bootstrap` byly po prvním úspěšném buildu ověřeny textové HTTP 500 `FUNCTION_INVOCATION_FAILED`. Lokální import sestaveného ESM API reprodukoval `ERR_MODULE_NOT_FOUND` kvůli relativním importům bez přípony. Oprava doplňuje `.js` přípony a zavádí kontrolu nativního spuštění. Dva klientské testy ověřují, že textová chyba serveru zobrazí českou zprávu a správné JSON odpovědi zachovají data i chybové zprávy. Po nasazení commitu `3d7f355` bylo na `forester-peach.vercel.app` ověřeno HTTP 200 JSON pro health a HTTP 401 JSON pro bootstrap bez session.
+
+Prázdný přihlašovací požadavek z přesného originu veřejného webu pak odhalil HTTP 403 kvůli nastavení `APP_ORIGIN`. Další oprava normalizuje URL a přijímá také přesné adresy z důvěryhodných systémových metadat Vercelu. Dva testy ověřují domény produkce, oddělení preview, odstranění cesty a odmítnutí nesouvisející domény. Přihlášení se skutečným heslem uživatele zatím nebylo provedeno.
 
 Samostatné HTTP testy ověřují, že řidič nedostane seznam zaměstnanců ani provozní data, nemůže spravovat účty a provozní API není dostupné ani dispečerovi. Bootstrap neobsahuje práce, techniku ani statistiky.
 

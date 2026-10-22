@@ -8,6 +8,7 @@ import type { Db } from './db.js';
 import { audit, transaction, asStore, type Store } from './store.js';
 import { hashPassword, verifyPassword, randomToken, tokenHash } from './security.js';
 import { DomainError } from './errors.js';
+import { resolveOrigins } from './origins.js';
 import type { User } from '../shared/types.js';
 z.config(z.locales.cs());
 declare global {
@@ -64,18 +65,10 @@ export async function createApp(
   const db = asStore(database);
   const app = express();
   const production = options.production ?? process.env.NODE_ENV === 'production';
-  const vercelHost =
-    process.env.VERCEL === '1'
-      ? process.env.VERCEL_ENV === 'production'
-        ? process.env.VERCEL_PROJECT_PRODUCTION_URL
-        : process.env.VERCEL_URL
-      : undefined;
-  const origin =
-    options.origin ||
-    process.env.APP_ORIGIN ||
-    (vercelHost ? `https://${vercelHost}` : 'http://localhost:5173');
+  const resolved = resolveOrigins(options.origin || process.env.APP_ORIGIN);
+  const origin = resolved.origin;
   const allowedOrigins = new Set([
-    origin,
+    ...resolved.allowedOrigins,
     ...(!production
       ? [
           'http://localhost:5173',
