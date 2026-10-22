@@ -1,5 +1,5 @@
-import { openDb } from './db';
-import { seedDemo, initDispatcher } from './seed';
+import { openDb } from './db.js';
+import { seedDemo, initDispatcher } from './seed.js';
 const db = openDb();
 try {
   switch (process.argv[2]) {

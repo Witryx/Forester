@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { audit, transaction, type Db } from './db';
-import { hashPassword } from './security';
-import { createReservation } from './planning';
+import { audit, transaction, type Db } from './db.js';
+import { hashPassword } from './security.js';
+import { createReservation } from './planning.js';
 export async function seedDemo(db: Db) {
   if (process.env.NODE_ENV === 'production')
     throw new Error('Demo data nejsou povolena v produkci.');

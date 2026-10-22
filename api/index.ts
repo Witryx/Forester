@@ -1,7 +1,7 @@
 import { attachDatabasePool } from '@vercel/functions';
-import { createApp } from '../server/app';
-import { openPostgres } from '../server/postgres';
-import { createVercelHandler } from '../server/vercel-handler';
+import { createApp } from '../server/app.js';
+import { openPostgres } from '../server/postgres.js';
+import { createVercelHandler } from '../server/vercel-handler.js';
 
 let appPromise: ReturnType<typeof createApp> | undefined;
 function getApp() {

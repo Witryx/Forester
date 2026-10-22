@@ -1,9 +1,9 @@
-import { openPostgres, migratePostgres, initPostgresDispatcher } from './postgres';
+import { openPostgres, migratePostgres, initPostgresDispatcher } from './postgres.js';
 import {
   DeploymentConfigError,
   describeDeploymentError,
   type DeploymentStage,
-} from './deploy-errors';
+} from './deploy-errors.js';
 
 let connection: ReturnType<typeof openPostgres> | undefined;
 let stage: DeploymentStage = 'nastavení';

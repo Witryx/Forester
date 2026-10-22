@@ -2,10 +2,10 @@ import { Pool, types } from 'pg';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { postgresStore, type ConnectionPool, type Store, audit } from './store';
-import { hashPassword } from './security';
+import { postgresStore, type ConnectionPool, type Store, audit } from './store.js';
+import { hashPassword } from './security.js';
 import { randomUUID } from 'node:crypto';
-import { DeploymentConfigError } from './deploy-errors';
+import { DeploymentConfigError } from './deploy-errors.js';
 
 export function openPostgres(connectionString: string) {
   if (!/^postgres(ql)?:\/\//.test(connectionString))

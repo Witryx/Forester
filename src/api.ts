@@ -24,7 +24,17 @@ export async function api<T>(
     },
     ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new ApiError(
+      response.status >= 500
+        ? 'Server je dočasně nedostupný. Zkuste to prosím za chvíli.'
+        : 'Server vrátil neplatnou odpověď. Obnovte stránku a zkuste to znovu.',
+      response.status,
+    );
+  }
   if (!response.ok) {
     const error = new ApiError(data.message || 'Požadavek selhal.', response.status, data.fields);
     if (response.status === 401 && !url.startsWith('/auth/login'))

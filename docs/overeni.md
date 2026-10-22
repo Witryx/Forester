@@ -4,9 +4,10 @@ Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá �
 
 ## Automatické kontroly
 
-- `npm.cmd test`: 35 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty a bezpečné diagnostiky nasazení.
+- `npm.cmd test`: 37 testů prošlo včetně vytvoření nového zaměstnance s účtem, PostgreSQL varianty, bezpečné diagnostiky nasazení a textové chyby API.
 - `npm.cmd run check`: TypeScript prošel.
 - `npm.cmd run build`: TypeScript a produkční sestavení prošly.
+- `npm.cmd run check:runtime`: serverové API se přeloží v režimu NodeNext a načte přímo v nativním Node.js bez `tsx` nebo Vite. Tento krok je součástí buildu.
 
 Testy pokrývají hashování hesel, session cookie, odhlášení, omezení chybných pokusů, CSRF, vytvoření a editaci účtu, role, deaktivaci, reset hesla a ochranu posledního dispečera. Ověřují také zneplatnění session při změně účtu, odmítnutí duplicity bez změny dat a zastaralý zápis.
 
@@ -15,6 +16,8 @@ Nové HTTP testy ověřují vytvoření propojeného profilu a účtu, přiděle
 Pět integračních testů PostgreSQL nad PGlite ověřuje opakovatelné migrace, prvního dispečera, neměnný audit, přihlášení, souběžné vytvoření zaměstnanců, rollback, role, změnu a reset hesla, deaktivaci a ochranu posledního dispečera. Session i limit chybných přihlášení fungují mezi dvěma instancemi API. HTTP testy procházejí také Vercel adaptérem s přepisem API cesty. Živé připojení k Neonu bylo podle uživatelova Build Logu ověřeno; první migrace selhala kódem `42703` na pozici 8. Oprava tuto chybu reprodukuje na cizí `public.schema_migrations`, zavádí vlastní schéma `forester` a testuje zachování cizích účtů i konfigurace. Úspěšnou migraci a skutečné směrování Vercelu je ještě potřeba ověřit po nasazení opravy.
 
 Další dva testy ověřují, že diagnostika nasazení uvádí fázi a databázový kód bez výpisu připojovacích údajů, a že SSL aliasy současného ovladače zůstávají při normalizaci na `verify-full` ověřované.
+
+Na veřejné adrese `/api/health` a `/api/bootstrap` byly po prvním úspěšném buildu ověřeny textové HTTP 500 `FUNCTION_INVOCATION_FAILED`. Lokální import sestaveného ESM API reprodukoval `ERR_MODULE_NOT_FOUND` kvůli relativním importům bez přípony. Oprava doplňuje `.js` přípony a zavádí kontrolu nativního spuštění. Dva klientské testy ověřují, že textová chyba serveru zobrazí českou zprávu a správné JSON odpovědi zachovají data i chybové zprávy. Veřejné API je po nasazení této opravy potřeba znovu ověřit.
 
 Samostatné HTTP testy ověřují, že řidič nedostane seznam zaměstnanců ani provozní data, nemůže spravovat účty a provozní API není dostupné ani dispečerovi. Bootstrap neobsahuje práce, techniku ani statistiky.
 

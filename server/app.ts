@@ -4,11 +4,11 @@ import { randomUUID } from 'node:crypto';
 import { z, ZodError } from 'zod';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import type { Db } from './db';
-import { audit, transaction, asStore, type Store } from './store';
-import { hashPassword, verifyPassword, randomToken, tokenHash } from './security';
-import { DomainError } from './errors';
-import type { User } from '../shared/types';
+import type { Db } from './db.js';
+import { audit, transaction, asStore, type Store } from './store.js';
+import { hashPassword, verifyPassword, randomToken, tokenHash } from './security.js';
+import { DomainError } from './errors.js';
+import type { User } from '../shared/types.js';
 z.config(z.locales.cs());
 declare global {
   namespace Express {

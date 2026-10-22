@@ -1,8 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import type { SQLInputValue } from 'node:sqlite';
-import type { Db } from './db';
-import { qualifyPostgresTables } from './postgres-schema';
+import type { Db } from './db.js';
+import { qualifyPostgresTables } from './postgres-schema.js';
 
 export type Row = Record<string, unknown>;
 type Result = { rows: Row[]; rowCount: number | null };

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "concurrently -k -n api,web \"node --env-file-if-exists=.env --import tsx --watch server/index.ts\" \"vite --host 127.0.0.1\"",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && npm run check:runtime && vite build",
+    "check:runtime": "tsc -p tsconfig.runtime.json && node scripts/check-runtime.mjs",
     "vercel:build": "npm run db:deploy && npm run build",
     "db:deploy": "node --env-file-if-exists=.env --import tsx server/deploy-db.ts",
     "start": "node --env-file-if-exists=.env --import tsx server/index.ts",

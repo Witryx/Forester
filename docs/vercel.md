@@ -49,6 +49,8 @@ Demo účty `dispecer` / `ridic` se do Neonu automaticky nepřenášejí. Lokál
 
 `npm run build` ověřuje TypeScript a frontend bez potřeby online databáze. `npm test` spouští původní SQLite testy i integrační testy PostgreSQL nad PGlite (PostgreSQL ve WASM). Ty ověřují SQL migrace, účet, session, role, reset hesla, atomické uložení a sdílené omezení přihlášení. Živé připojení k Neonu a směrování na Vercelu je potřeba ověřit po propojení účtů a nasazení.
 
+Build navíc spouští `npm run check:runtime`: přeloží API a server v režimu NodeNext do ignorované složky `artifacts/runtime` a načte vstup API v nativním Node.js. Relativní serverové importy mají `.js` příponu, aby fungovaly i po překladu TypeScriptu bez vývojového loaderu. Kontrola nepotřebuje databázové heslo a neotevírá síťové spojení. Úspěšné sestavení samo nenahrazuje kontrolu `/api/health` a přihlášení na veřejné adrese.
+
 Při neúspěšném buildu ukáže `db:deploy` fázi (`připojení`, `migrace`, `první účet`) a kód chyby. Například `28P01` znamená odmítnuté přihlašovací údaje, `42P07` již existující tabulku/index (možný konflikt s databází druhé aplikace), `42501` chybějící oprávnění. Log neobsahuje URL, hesla, SQL dotazy ani DETAIL z databázových chyb. Žluté upozornění ovladače na budoucí význam `sslmode` samo není chybou nasazení; kód výslovně zachovává současné ověřování certifikátu pomocí `verify-full`.
 
 Zdroje: [Vercel Functions pro Node.js](https://vercel.com/docs/functions/runtimes/node-js), [Vite na Vercelu](https://vercel.com/docs/frameworks/frontend/vite), [connection pooling](https://vercel.com/kb/guide/connection-pooling-with-functions), [Neon připojení](https://neon.com/docs/get-started/connect-neon).
