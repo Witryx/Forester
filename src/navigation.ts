@@ -1,8 +1,9 @@
-export type Destination = 'overview' | 'users';
+export type Destination = 'overview' | 'users' | 'profile';
 export type Page = Destination | 'not-found';
 export const paths: Record<Destination, string> = {
   overview: '/firma',
   users: '/firma/ucty',
+  profile: '/firma/profil',
 };
 export function pageFromPath(): Page {
   return (

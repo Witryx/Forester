@@ -1,6 +1,6 @@
 # Forester
 
-Interní web pro přepravu dřeva a lesní těžbu. Říjnový rozsah podle seznamu uživatele: databázový návrh, přihlášení a odhlášení, role Dispečer / Řidič, deaktivace, základ správy účtů a UI/UX. Dispečer má úvod a správu účtů; řidič pouze úvod s údaji účtu a odhlášení. React + TypeScript, Express, lokální SQLite nebo PostgreSQL (Neon / Vercel); Node **24.11+ v řadě 24.x**.
+Interní web pro přepravu dřeva a lesní těžbu. Říjnový rozsah podle seznamu uživatele: databázový návrh, přihlášení a odhlášení, role Dispečer / Řidič, deaktivace, základ správy účtů a UI/UX. Obě role mají úvod s údaji účtu, Můj profil se změnou vlastního hesla a odhlášení; dispečer navíc správu účtů. React + TypeScript, Express, lokální SQLite nebo PostgreSQL (Neon / Vercel); Node **24.11+ v řadě 24.x**.
 
 ## Spuštění
 

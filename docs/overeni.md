@@ -1,6 +1,6 @@
 # Ověření říjnového základu
 
-Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá říjnovému seznamu uživatele s doplněním vytvoření zaměstnance při zakládání účtu. Řidič má pouze úvod s údaji účtu a odhlášení; dispečer má navíc správu účtů.
+Aktualizace 22. 10. 2026 na Windows a Node 24.11.1. Rozsah aplikace odpovídá říjnovému seznamu uživatele s doplněním vytvoření zaměstnance při zakládání účtu a změny vlastního hesla. Obě role mají úvod s údaji účtu, Můj profil a odhlášení; dispečer má navíc správu účtů.
 
 ## Automatické kontroly
 
@@ -31,8 +31,9 @@ Připojený prohlížeč nebyl dostupný. Následující body jsou checklist, ni
 
 - [ ] Desktop a mobilní šířka 360 px, světlý i tmavý režim.
 - [ ] Přihlášení obou rolí, odhlášení a vypršení session.
-- [ ] Řidič vidí pouze úvod a odhlášení, bez práce, techniky a samostatného profilu.
-- [ ] Dispečer vidí úvod a správu účtů.
+- [ ] Řidič vidí úvod, Můj profil a odhlášení, bez práce a techniky.
+- [ ] Dispečer vidí úvod, správu účtů a Můj profil.
+- [ ] Obě role otevřou Můj profil z navigace i přímo na `/firma/profil`; změna hesla odhlásí všechna zařízení a přihlášení přijme nové heslo, původní odmítne.
 - [ ] Vytvoření a editace uživatele, role, deaktivace a reset hesla.
 - [ ] Nový řidič: výchozí možnost „Vytvořit nového zaměstnance“, jméno, příjmení a uložení účtu; poté ověřit také výběr existujícího profilu.
 - [ ] Povinná změna dočasného hesla při prvním přihlášení.

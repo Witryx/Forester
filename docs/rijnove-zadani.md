@@ -27,9 +27,9 @@ Doplnění 22. 10. 2026: při založení řidičského účtu může dispečer t
 - Vizuální styl Foresteru, sdílené formuláře a tlačítka, světlý a tmavý režim.
 - Přihlašovací obrazovka.
 - Základní rozložení dispečerské a řidičské části včetně mobilní navigace.
-- Dispečer: Úvod, Účty a oprávnění, odhlášení.
-- Řidič: Úvod se jménem, přihlašovacím jménem a rolí, odhlášení.
-- Změna dočasného hesla je součástí přihlášení, samostatná profilová sekce není v navigaci.
+- Dispečer: Úvod, Účty a oprávnění, Můj profil, odhlášení.
+- Řidič: Úvod se jménem, přihlašovacím jménem a rolí, Můj profil, odhlášení.
+- Změna dočasného hesla je součástí přihlášení. Doplnění 22. 10. 2026: oba typy účtů mohou vlastní heslo změnit také přes Můj profil (`/firma/profil`); vyžaduje současné heslo a odhlásí všechna zařízení.
 
 ## Hranice rozsahu
 
@@ -41,9 +41,10 @@ Existující databázový model, uložená data, interní audit účtů a domén
 
 1. Přihlásit se jako `dispecer`, otevřít Účty a oprávnění.
 2. Vytvořit účet pro volný profil zaměstnance, upravit jméno a roli.
-3. Odhlásit se a přihlásit `ridic`; dostupný je pouze základní úvod.
+3. Odhlásit se a přihlásit `ridic`; dostupný je základní úvod a vlastní profil.
 4. Jako řidič otevřít `/firma/ucty`; přístup musí být odmítnutý i přes API.
 5. Deaktivovat řidiče jako dispečer; stará session i nové přihlášení musí selhat.
 6. Ověřit, že staré adresy práce, techniky, dispatch a auditu nejsou dostupné.
+7. Jako dispečer i řidič otevřít Můj profil z navigace i přímou adresou `/firma/profil`. Změnit vlastní heslo, ověřit odhlášení a nové přihlášení; původní heslo musí být odmítnuté.
 
 Automatické testy a build jsou popsané v `docs/overeni.md`. Vizuální QA na desktopu a šířce 360 px zůstává k provedení.

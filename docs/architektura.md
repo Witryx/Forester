@@ -42,7 +42,7 @@ Dispečer vytváří a upravuje účty a přiřazuje role. Poslední aktivní di
 
 ## Rozhraní a API
 
-Navigace dispečera obsahuje Úvod a Účty a oprávnění. Řidič má pouze Úvod s údaji svého účtu. Obě role mají odhlášení a přepnutí tématu. Samostatný profil není v navigaci; komponenta změny hesla se používá při povinné změně dočasného hesla.
+Navigace dispečera obsahuje Úvod, Účty a oprávnění a Můj profil. Řidič má Úvod s údaji svého účtu a Můj profil. Obě role mají odhlášení a přepnutí tématu. Profil na `/firma/profil` umožňuje změnu vlastního hesla se zadáním současného hesla. Stejná komponenta se používá při povinné změně dočasného hesla. Úspěšná změna zneplatní všechna přihlášení a vrátí uživatele na přihlašovací formulář.
 
 `GET /api/bootstrap` vrací účet, CSRF token, demo příznak a čas načtení. Dispečer dostane navíc seznam profilů zaměstnanců pro správu účtů. Řidiči se nevracejí provozní data ani seznam zaměstnanců.
 

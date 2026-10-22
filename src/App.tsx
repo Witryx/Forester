@@ -12,6 +12,7 @@ import {
   Settings2,
   Sun,
   Trees,
+  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -125,6 +126,11 @@ export default function App() {
       setError(err);
     }
   }
+  function passwordChanged() {
+    setData(null);
+    setCsrf('');
+    setToast('Heslo je změněné. Přihlaste se novým heslem.');
+  }
   if (loading)
     return (
       <div className="initial-loading">
@@ -166,15 +172,7 @@ export default function App() {
           <Trees />
           forester.
         </div>
-        <Profile
-          user={data.user}
-          forced
-          onChanged={() => {
-            setData(null);
-            setCsrf('');
-            setToast('Heslo je změněné. Přihlaste se novým heslem.');
-          }}
-        />
+        <Profile user={data.user} forced onChanged={passwordChanged} />
         <Button secondary onClick={logout}>
           Odhlásit se
         </Button>
@@ -185,6 +183,7 @@ export default function App() {
   const titles: Record<Page, string> = {
     overview: 'Úvod',
     users: 'Správa účtů',
+    profile: 'Můj profil',
     'not-found': 'Stránka nenalezena',
   };
   return (
@@ -234,6 +233,12 @@ export default function App() {
               onClick={() => navigate('users')}
             />
           )}
+          <NavItem
+            icon={UserRound}
+            label="Můj profil"
+            selected={page === 'profile'}
+            onClick={() => navigate('profile')}
+          />
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-person">
@@ -307,6 +312,7 @@ export default function App() {
                 <Home user={data.user} onAccounts={() => navigate('users')} />
               )}
               {page === 'users' && <Accounts data={data} refresh={refresh} />}
+              {page === 'profile' && <Profile user={data.user} onChanged={passwordChanged} />}
             </>
           )}
           <footer className="page-footer">

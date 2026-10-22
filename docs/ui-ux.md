@@ -61,10 +61,10 @@ Správa účtů obsahuje hledání, vytvoření a úpravu jména, username, role
 │ @ridic · Řidič                │
 │ Správu účtu zajišťuje dispečer.│
 └───────────────────────────────┘
-Navigace: Úvod, odhlášení.
+Navigace: Úvod, Můj profil, odhlášení.
 ```
 
-Úvod neobsahuje přepravy, techniku, statistiky ani samostatnou profilovou sekci. Jméno a role v postranním panelu jsou informační. Při přímém otevření správy účtů se zobrazí odmítnutí přístupu. Ostatní neznámé adresy zobrazí nedostupnou stránku s návratem na úvod.
+Úvod neobsahuje přepravy, techniku ani statistiky. Můj profil je samostatná položka navigace pro změnu vlastního hesla. Jméno a role v postranním panelu jsou informační. Při přímém otevření správy účtů se zobrazí odmítnutí přístupu. Ostatní neznámé adresy zobrazí nedostupnou stránku s návratem na úvod.
 
 ## Stavy a ověření
 
