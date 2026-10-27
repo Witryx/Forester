@@ -1,0 +1,16 @@
+ALTER TABLE employees ADD COLUMN status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','vacation','sick','off_duty','inactive'));
+ALTER TABLE employees ADD COLUMN note TEXT NOT NULL DEFAULT '';
+ALTER TABLE employees ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE vehicles ADD COLUMN status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','service','out_of_service','inactive'));
+ALTER TABLE vehicles ADD COLUMN note TEXT NOT NULL DEFAULT '';
+ALTER TABLE vehicles ADD COLUMN photos_json TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE vehicles ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE trailers ADD COLUMN status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','service','out_of_service','inactive'));
+ALTER TABLE trailers ADD COLUMN note TEXT NOT NULL DEFAULT '';
+ALTER TABLE trailers ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+UPDATE employees SET status='inactive' WHERE active=0;
+UPDATE vehicles SET status='inactive' WHERE active=0;
+UPDATE trailers SET status='inactive' WHERE active=0;
+CREATE UNIQUE INDEX assignment_current_driver ON default_assignments(employee_id) WHERE ends_at IS NULL;
+CREATE UNIQUE INDEX assignment_current_vehicle ON default_assignments(vehicle_id) WHERE ends_at IS NULL;
+CREATE UNIQUE INDEX assignment_current_trailer ON default_assignments(trailer_id) WHERE ends_at IS NULL AND trailer_id IS NOT NULL;

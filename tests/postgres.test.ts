@@ -9,6 +9,7 @@ import { migratePostgres, initPostgresDispatcher } from '../server/postgres';
 import { createApp } from '../server/app';
 import { createVercelHandler, restoreApiUrl } from '../server/vercel-handler';
 import { qualifyPostgresTables } from '../server/postgres-schema';
+import { fleetContract } from './fleet-contract';
 
 // A real PostgreSQL engine in WASM. One test connection is serialized because PGlite has one session.
 async function fixture(beforeMigration?: string) {
@@ -97,6 +98,8 @@ async function httpFixture() {
   };
 }
 
+fleetContract('PostgreSQL', httpFixture);
+
 test('PostgreSQL: migrace a první účet jsou opakovatelné, audit zůstává neměnný', async () => {
   const { db, pool } = await fixture();
   try {
@@ -106,7 +109,7 @@ test('PostgreSQL: migrace a první účet jsou opakovatelné, audit zůstává n
     assert.equal(Number((await db.prepare('SELECT COUNT(*) AS n FROM users').get())!.n), 1);
     assert.equal(
       Number((await db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get())!.n),
-      1,
+      2,
     );
     await assert.rejects(
       () => db.prepare("UPDATE audit_events SET action='changed'").run(),
@@ -151,7 +154,7 @@ test('PostgreSQL: cizí users a schema_migrations nezablokují Forester a zůsta
     await migratePostgres(pool);
     assert.equal(await initPostgresDispatcher(db, 'dispecer', 'ProductionTest!2026'), true);
     assert.equal((await db.prepare('SELECT username FROM users').get())!.username, 'dispecer');
-    assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get())!.n, 1);
+    assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get())!.n, 2);
     assert.deepEqual(await db.prepare('SELECT * FROM public.schema_migrations').all(), [
       { version: 'other-app-001' },
     ]);

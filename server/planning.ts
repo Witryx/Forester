@@ -37,16 +37,23 @@ export function createReservation(
   return transaction(db, () => {
     const { employeeId, vehicleId, trailerId, startsAt, endsAt } = input;
     const employee = db
-      .prepare('SELECT * FROM employees WHERE id=? AND active=1 AND archived_at IS NULL')
+      .prepare(
+        "SELECT * FROM employees WHERE id=? AND active=1 AND status='available' AND archived_at IS NULL",
+      )
       .get(employeeId);
     const vehicle = db
-      .prepare('SELECT * FROM vehicles WHERE id=? AND active=1 AND archived_at IS NULL')
+      .prepare(
+        "SELECT * FROM vehicles WHERE id=? AND active=1 AND status='available' AND archived_at IS NULL",
+      )
       .get(vehicleId);
-    if (!employee || !vehicle) throw new DomainError(422, 'Vyberte aktivního řidiče a tahač.');
+    if (!employee || !vehicle)
+      throw new DomainError(422, 'Vyberte dostupného řidiče a provozuschopný tahač.');
     if (
       trailerId &&
       !db
-        .prepare('SELECT id FROM trailers WHERE id=? AND active=1 AND archived_at IS NULL')
+        .prepare(
+          "SELECT id FROM trailers WHERE id=? AND active=1 AND status='available' AND archived_at IS NULL",
+        )
         .get(trailerId)
     )
       throw new DomainError(422, 'Návěs není dostupný.');

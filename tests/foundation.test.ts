@@ -199,7 +199,7 @@ test('Nepřítomnost na hranici, otevřená odstávka a neaktivní řidič', asy
           }),
           actor,
         ),
-      /aktivního/,
+      /dostupného/,
     );
     db.prepare('INSERT INTO absences VALUES (?,?,?,?,?,?)').run(
       'sick',
@@ -223,6 +223,23 @@ test('Nepřítomnost na hranici, otevřená odstávka a neaktivní řidič', asy
         ),
       /nepřítomný/,
     );
+  } finally {
+    db.close();
+  }
+});
+test('Ručně evidované nedostupné stavy brání novým rezervacím', async () => {
+  const db = await fixture();
+  try {
+    for (const [table, id, status] of [
+      ['employees', 'driver-1', 'vacation'],
+      ['vehicles', 'vehicle-1', 'service'],
+      ['trailers', 'trailer-1', 'out_of_service'],
+    ]) {
+      db.prepare(`UPDATE ${table} SET status=? WHERE id=?`).run(status, id);
+      assert.throws(() => createReservation(db, input(), actor), /dostupn|provozuschopný/);
+      db.prepare(`UPDATE ${table} SET status='available' WHERE id=?`).run(id);
+    }
+    assert(createReservation(db, input(), actor).id);
   } finally {
     db.close();
   }
@@ -779,7 +796,7 @@ test('Migrace jsou opakovatelné, demo seed nezmění existující práci', asyn
     const count = db.prepare('SELECT COUNT(*) AS n FROM orders').get()!.n;
     await seedDemo(db);
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM orders').get()!.n, count);
-    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get()!.n, 2);
+    assert.equal(db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get()!.n, 3);
   } finally {
     db.close();
   }
@@ -810,20 +827,14 @@ test('Přerušený demo seed nezanechá částečné účty ani práci; lze jej 
   }
 });
 
-test('Provozní moduly nejsou v říjnovém API dostupné ani dispečerovi', async () => {
+test('Plán přeprav a audit zůstávají neveřejné; vozový park spravuje pouze dispečer', async () => {
   const f = await httpFixture();
   try {
     const a = await f.login();
     const d = await f.login('ridic');
     const count = f.db.prepare('SELECT COUNT(*) AS n FROM orders').get()!.n;
     for (const session of [a, d]) {
-      for (const path of [
-        '/api/audit',
-        '/api/orders/demo',
-        '/api/orders',
-        '/api/vehicles',
-        '/api/trailers',
-      ]) {
+      for (const path of ['/api/audit', '/api/orders/demo', '/api/orders']) {
         assert.equal((await f.call(path, undefined, session.cookie)).status, 404, path);
       }
       assert.equal(
@@ -836,6 +847,10 @@ test('Provozní moduly nejsou v říjnovém API dostupné ani dispečerovi', asy
     }
     assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM orders').get()!.n, count);
     assert.equal((await f.call('/api/users', undefined, a.cookie)).status, 200);
+    for (const path of ['/api/fleet', '/api/drivers', '/api/vehicles', '/api/trailers']) {
+      assert.equal((await f.call(path, undefined, a.cookie)).status, 200, path);
+      assert.equal((await f.call(path, undefined, d.cookie)).status, 403, path);
+    }
     assert.equal(a.data.employees.length, 3);
   } finally {
     await f.close();

@@ -10,6 +10,7 @@ import { hashPassword, verifyPassword, randomToken, tokenHash } from './security
 import { DomainError } from './errors.js';
 import { resolveOrigins } from './origins.js';
 import type { User } from '../shared/types.js';
+import { registerFleet } from './fleet.js';
 z.config(z.locales.cs());
 declare global {
   namespace Express {
@@ -97,6 +98,7 @@ export async function createApp(
   >();
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: production ? undefined : false }));
+  app.use('/api/vehicles', express.json({ limit: '3mb' }));
   app.use(express.json({ limit: '16kb' }));
   app.use((req, res, next) => {
     req.correlationId = randomUUID();
@@ -482,6 +484,7 @@ export async function createApp(
     });
     res.json({ ok: true });
   });
+  registerFleet(app, db, dispatcher, reauthorize);
   app.use('/api', (_req, _res, next) =>
     next(new DomainError(404, 'Tento požadavek není dostupný.')),
   );
@@ -503,7 +506,13 @@ export async function createApp(
       return res.status(error.status).json({ message: error.message });
     const message = error instanceof Error ? error.message : '';
     if (message.includes('UNIQUE constraint') || (error as { code?: string })?.code === '23505')
-      return res.status(409).json({ message: 'Uživatelské jméno nebo profil už je použitý.' });
+      return res
+        .status(409)
+        .json({ message: 'Uživatelské jméno, profil, VIN nebo přiřazení už je použité.' });
+    if ((error as { status?: number })?.status === 413)
+      return res.status(413).json({
+        message: 'Fotografie jsou příliš velké. Přidejte nejvýše 4 fotografie do 500 kB.',
+      });
     if (message.includes('reservation_conflict'))
       return res.status(409).json({ message: 'Souprava je v tomto čase již rezervovaná.' });
     if (

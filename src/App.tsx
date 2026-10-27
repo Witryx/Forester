@@ -14,6 +14,9 @@ import {
   Trees,
   UserRound,
   X,
+  Truck,
+  UsersRound,
+  Container,
   type LucideIcon,
 } from 'lucide-react';
 import { api, ApiError, setCsrf } from './api';
@@ -25,6 +28,7 @@ import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { Accounts } from './pages/Accounts';
 import { Profile } from './pages/Profile';
+import { FleetPage } from './pages/Fleet';
 function NavItem({
   icon: Icon,
   label,
@@ -78,6 +82,7 @@ export default function App() {
   }
   function navigate(next: Destination) {
     window.history.pushState(null, '', paths[next]);
+    window.dispatchEvent(new PopStateEvent('popstate'));
     setPage(next);
     setMobile(false);
   }
@@ -179,15 +184,20 @@ export default function App() {
       </div>
     );
   const driver = data.user.role === 'driver';
-  const forbidden = driver && page === 'users';
+  const forbidden = driver && ['users', 'drivers', 'vehicles', 'trailers'].includes(page);
   const titles: Record<Page, string> = {
     overview: 'Úvod',
     users: 'Správa účtů',
     profile: 'Můj profil',
+    drivers: 'Řidiči',
+    vehicles: 'Tahače',
+    trailers: 'Návěsy',
     'not-found': 'Stránka nenalezena',
   };
   return (
-    <div className="app-layout">
+    <div
+      className={`app-layout ${['drivers', 'vehicles', 'trailers'].includes(page) ? 'fleet-layout' : ''}`}
+    >
       {mobile && (
         <button
           className="sidebar-scrim"
@@ -226,12 +236,32 @@ export default function App() {
             onClick={() => navigate('overview')}
           />
           {!driver && (
-            <NavItem
-              icon={Settings2}
-              label="Účty a oprávnění"
-              selected={page === 'users'}
-              onClick={() => navigate('users')}
-            />
+            <>
+              <NavItem
+                icon={UsersRound}
+                label="Řidiči"
+                selected={page === 'drivers'}
+                onClick={() => navigate('drivers')}
+              />
+              <NavItem
+                icon={Truck}
+                label="Tahače"
+                selected={page === 'vehicles'}
+                onClick={() => navigate('vehicles')}
+              />
+              <NavItem
+                icon={Container}
+                label="Návěsy"
+                selected={page === 'trailers'}
+                onClick={() => navigate('trailers')}
+              />
+              <NavItem
+                icon={Settings2}
+                label="Účty a oprávnění"
+                selected={page === 'users'}
+                onClick={() => navigate('users')}
+              />
+            </>
           )}
           <NavItem
             icon={UserRound}
@@ -313,6 +343,9 @@ export default function App() {
               )}
               {page === 'users' && <Accounts data={data} refresh={refresh} />}
               {page === 'profile' && <Profile user={data.user} onChanged={passwordChanged} />}
+              {(page === 'drivers' || page === 'vehicles' || page === 'trailers') && (
+                <FleetPage key={page} scope={page} refresh={refresh} />
+              )}
             </>
           )}
           <footer className="page-footer">

@@ -1,6 +1,6 @@
 # Forester
 
-Interní web pro přepravu dřeva a lesní těžbu. Říjnový rozsah podle seznamu uživatele: databázový návrh, přihlášení a odhlášení, role Dispečer / Řidič, deaktivace, základ správy účtů a UI/UX. Obě role mají úvod s údaji účtu, Můj profil se změnou vlastního hesla a odhlášení; dispečer navíc správu účtů. React + TypeScript, Express, lokální SQLite nebo PostgreSQL (Neon / Vercel); Node **24.11+ v řadě 24.x**.
+Interní web pro přepravu dřeva a lesní těžbu. Obě role mají přihlášení, úvod a profil se změnou hesla. Dispečer spravuje účty, řidiče, tahače, návěsy a jejich aktuální soupravy. Vozový park má formuláře, detaily, provozní stavy, dostupnost, historii přiřazení a fotografie tahačů. React + TypeScript, Express, lokální SQLite nebo PostgreSQL (Neon / Vercel); Node **24.11+ v řadě 24.x**.
 
 ## Spuštění
 
@@ -19,7 +19,7 @@ V PowerShellu používejte `npm.cmd`, pokud execution policy blokuje `npm.ps1`. 
 | Dispečer           | `dispecer` | `ForesterDemo!2026` |
 | Řidič Martin Novák | `ridic`    | `ForesterDemo!2026` |
 
-Hesla jsou výhradně pro lokální ukázku. Demo obsahuje dva uživatelské účty a tři profily zaměstnanců pro přiřazení řidičských účtů. Při zakládání řidičského účtu lze vybrat existujícího zaměstnance nebo vytvořit nového zadáním jména a příjmení. Evidenční kód se přidělí automaticky a profil se uloží společně s účtem. Data se uchovávají v `data/forester.sqlite`; při dalších spuštěních nevznikají znovu. Seed obsahuje také interní data pro ověření databázového modelu, provozní moduly však nejsou v říjnové aplikaci dostupné.
+Hesla jsou výhradně pro lokální ukázku. Demo obsahuje dva uživatelské účty, tři řidiče, tři tahače a tři návěsy s přiřazenými soupravami. Profil řidiče lze vytvořit samostatně nebo společně s řidičským účtem. Evidenční kód se přidělí automaticky. Data se uchovávají v `data/forester.sqlite`; při dalších spuštěních nevznikají znovu. Správa vozového parku a pravidla dostupnosti jsou popsány v [docs/vozovy-park.md](docs/vozovy-park.md).
 
 ## Kontroly a sestavení
 
@@ -61,5 +61,6 @@ Původní databáze zůstane zachovaná. Seed je opakovatelný, transakční a o
 - [Původní PRD](docs/prd.md) — zachované znění přiloženého dokumentu.
 - [Architektura](docs/architektura.md), [ERD a datový slovník](docs/erd.md).
 - [UI/UX a wireframy](docs/ui-ux.md), [ověření a manuální checklist](docs/overeni.md).
+- [Řidiči a vozový park](docs/vozovy-park.md) — aktuální funkce, API, migrace, fotografie a přiřazování souprav.
 
-Rozhraní ani API neposkytují práci řidiče, techniku, plán přeprav, rezervace nebo prohlížení auditu. Databázový model a interní audit změn účtů zůstávají zachované. Vizuální a klávesnicové QA v prohlížeči, zejména při 360 px a v obou režimech, zbývá ověřit.
+Plánování přeprav, rezervace a prohlížení auditu zatím nemají vlastní rozhraní. Dostupnost vozového parku zohledňuje existující rezervace, odstávky a nepřítomnosti v databázi. Automatické kontroly zahrnují SQLite i PostgreSQL; kontrolu na skutečném telefonu je nutné provést na cílovém zařízení.
